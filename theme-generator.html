@@ -61,7 +61,18 @@
       <div class="drag-drawflow" draggable="true" ondragstart="drag(event)" data-node="dbclick">
         <i class="fas fa-mouse"></i><span> DBClick!</span>
       </div>
-
+      <div class="drag-drawflow" draggable="true" ondragstart="drag(event)" data-node="endpoint">
+        <i class="fas fa-plug"></i><span> API Endpoint</span>
+      </div>
+      <div class="drag-drawflow" draggable="true" ondragstart="drag(event)" data-node="service">
+        <i class="fas fa-cogs"></i><span> Microservice</span>
+      </div>
+      <div class="drag-drawflow" draggable="true" ondragstart="drag(event)" data-node="application">
+        <i class="fas fa-desktop"></i><span> Application</span>
+      </div>
+      <div class="drag-drawflow" draggable="true" ondragstart="drag(event)" data-node="data-mapping">
+        <i class="fas fa-exchange-alt"></i><span> Data Mapping</span>
+      </div>
 
     </div>
     <div class="col-right">
@@ -73,10 +84,10 @@
       </div>
       <div id="drawflow" ondrop="drop(event)" ondragover="allowDrop(event)">
 
-        <div class="btn-export" onclick="Swal.fire({ title: 'Export',
-        html: '<pre><code>'+JSON.stringify(editor.export(), null,4)+'</code></pre>'
-        })">Export</div>
+        <div class="btn-export" onclick="downloadExport()">Export</div>
         <div class="btn-clear" onclick="editor.clearModuleSelected()">Clear</div>
+        <div class="btn-import" onclick="document.getElementById('import-file-input').click()">Import</div>
+        <input type="file" id="import-file-input" accept=".json" style="display: none;" onchange="importDataFromFile(event)">
         <div class="btn-lock">
           <i id="lock" class="fas fa-lock" onclick="editor.editor_mode='fixed'; changeMode('lock');"></i>
           <i id="unlock" class="fas fa-lock-open" onclick="editor.editor_mode='edit'; changeMode('unlock');" style="display:none;"></i>

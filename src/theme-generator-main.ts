@@ -17,12 +17,14 @@ let editor: any;
 let transform: string = '';
 let mobile_item_selec: string = '';
 let mobile_last_move: any = null;
+let isResizing: boolean = false;
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', (): void => {
     initializeDrawflow();
     setupEventListeners();
     setupDragAndDrop();
+    setupResizeHandlers();
     loadSampleData();
 });
 
@@ -111,12 +113,15 @@ function setupEventListeners(): void {
         console.log(connection);
     });
 
-    editor.on('mouseMove', (position: { x: number; y: number }): void => {
-        console.log('Position mouse x:' + position.x + ' y:'+ position.y);
+    editor.on('mouseMove', (_position: { x: number; y: number }): void => {
+        //console.log('Position mouse x:' + _position.x + ' y:'+ _position.y);
     });
 
     editor.on('nodeMoved', (id: string): void => {
-        console.log("Node moved " + id);
+        // Only log if not resizing to avoid spam during resize
+        if (!isResizing) {
+            console.log("Node moved " + id);
+        }
     });
 
     editor.on('zoom', (zoom: number): void => {
@@ -168,7 +173,7 @@ function drag(ev: any): void {
     } else {
         const target = ev.target as HTMLElement;
         const nodeType = target.getAttribute('data-node');
-        if (ev.dataTransfer && nodeType) {
+        if (ev.dataTransfer && nodeType && !isResizing) {
             ev.dataTransfer.setData("node", nodeType);
         }
     }
@@ -351,6 +356,112 @@ function addNodeToDrawFlow(name: string, pos_x: number, pos_y: number): void {
             `;
             editor.addNode('dbclick', 1, 1, pos_x, pos_y, 'dbclick', { name: ''}, dbclick);
             break;
+            
+        case 'endpoint':
+            const endpoint: string = `
+            <div style="width: 100%; height: 100%; display: flex; flex-direction: column;">
+              <div class="title-box"><i class="fas fa-plug"></i> API Endpoint</div>
+              <div class="box" style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
+                <p style="margin: 0; font-weight: bold;">Endpoint Configuration</p>
+                <input type="text" df-url placeholder="API URL" value="https://api.example.com" style="width: 100%;">
+                <select df-method style="width: 100%;">
+                  <option value="GET">GET</option>
+                  <option value="POST">POST</option>
+                  <option value="PUT">PUT</option>
+                  <option value="DELETE">DELETE</option>
+                </select>
+                <p style="margin: 0; font-weight: bold;">Authentication</p>
+                <input type="text" df-auth placeholder="Bearer token or API key" style="width: 100%;">
+              </div>
+            </div>
+            `;
+            editor.addNode('endpoint', 1, 1, pos_x, pos_y, 'endpoint', { 
+                "url": 'https://api.example.com', 
+                "method": 'GET', 
+                "auth": '' 
+            }, endpoint);
+            break;
+            
+        case 'service':
+            const service: string = `
+            <div style="width: 100%; height: 100%; display: flex; flex-direction: column;">
+              <div class="title-box"><i class="fas fa-cogs"></i> Microservice</div>
+              <div class="box" style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
+                <p style="margin: 0; font-weight: bold;">Service Configuration</p>
+                <input type="text" df-service-name placeholder="Service Name" value="user-service" style="width: 100%;">
+                <input type="text" df-port placeholder="Port" value="3000" style="width: 100%;">
+                <select df-protocol style="width: 100%;">
+                  <option value="http">HTTP</option>
+                  <option value="https">HTTPS</option>
+                  <option value="grpc">gRPC</option>
+                </select>
+                <p style="margin: 0; font-weight: bold;">Health Check</p>
+                <input type="text" df-health-path placeholder="/health" value="/health" style="width: 100%;">
+              </div>
+            </div>
+            `;
+            editor.addNode('service', 2, 2, pos_x, pos_y, 'service', { 
+                "serviceName": 'user-service', 
+                "port": '3000', 
+                "protocol": 'http',
+                "healthPath": '/health'
+            }, service);
+            break;
+            
+        case 'application':
+            const application: string = `
+            <div style="width: 100%; height: 100%; display: flex; flex-direction: column;">
+              <div class="title-box"><i class="fas fa-desktop"></i> Application</div>
+              <div class="box" style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
+                <p style="margin: 0; font-weight: bold;">Application Configuration</p>
+                <input type="text" df-app-name placeholder="App Name" value="my-app" style="width: 100%;">
+                <select df-framework style="width: 100%;">
+                  <option value="react">React</option>
+                  <option value="vue">Vue.js</option>
+                  <option value="angular">Angular</option>
+                  <option value="node">Node.js</option>
+                  <option value="python">Python</option>
+                </select>
+                <p style="margin: 0; font-weight: bold;">Environment</p>
+                <select df-environment style="width: 100%;">
+                  <option value="development">Development</option>
+                  <option value="staging">Staging</option>
+                  <option value="production">Production</option>
+                </select>
+                <p style="margin: 0; font-weight: bold;">Database</p>
+                <input type="text" df-database placeholder="Database URL" style="width: 100%;">
+              </div>
+            </div>
+            `;
+            editor.addNode('application', 1, 3, pos_x, pos_y, 'application', { 
+                "appName": 'my-app', 
+                "framework": 'react', 
+                "environment": 'development',
+                "database": ''
+            }, application);
+            break;
+            
+        case 'data-mapping':
+            const dataMapping: string = `
+            <div style="width: 100%; height: 100%; display: flex; flex-direction: column;">
+              <div class="title-box"><i class="fas fa-exchange-alt"></i> Data Mapping</div>
+              <div class="box" style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
+                <p style="margin: 0; font-weight: bold;">Mapping Configuration</p>
+                
+                <p style="margin: 0; font-weight: bold;">Mapping Rules</p>
+                <textarea df-mapping-rules placeholder="Mapping Rules (JSONPath expressions)" style="width: 100%; height: 40px; resize: vertical;">$.id -> $.userId
+$.name -> $.fullName</textarea>
+              </div>
+            </div>
+            `;
+            editor.addNode('data-mapping', 3, 3, pos_x, pos_y, 'data-mapping', { 
+                "mappingName": 'user-data-mapping', 
+                "transformationType": 'transform',
+                "inputSchema": '{"type": "object", "properties": {"id": {"type": "string"}, "name": {"type": "string"}}}',
+                "outputSchema": '{"type": "object", "properties": {"userId": {"type": "string"}, "fullName": {"type": "string"}}}',
+                "mappingRules": '$.id -> $.userId\n$.name -> $.fullName'
+            }, dataMapping);
+            break;
 
         default:
             // No action for unknown node types
@@ -425,6 +536,199 @@ function changeMode(option: 'lock' | 'unlock'): void {
     }
 }
 
+// Setup resize handlers for nodes
+function setupResizeHandlers(): void {
+    // Listen for node creation to add resize handlers
+    editor.on('nodeCreated', (nodeId: string) => {
+        const nodeElement = document.querySelector(`[data-id="${nodeId}"]`) as HTMLElement;
+        if (nodeElement) {
+            addResizeHandler(nodeElement, nodeId);
+        }
+    });
+
+    // Add resize handlers to existing nodes
+    setTimeout(() => {
+        const existingNodes = document.querySelectorAll('.drawflow-node');
+        existingNodes.forEach((nodeElement) => {
+            const nodeId = (nodeElement as HTMLElement).getAttribute('data-id');
+            if (nodeId) {
+                addResizeHandler(nodeElement as HTMLElement, nodeId);
+            }
+        });
+    }, 100);
+}
+
+// Add resize handler to a specific node
+function addResizeHandler(nodeElement: HTMLElement, nodeId: string): void {
+    // Add resize event listener
+    const resizeObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+            const { width, height } = entry.contentRect;
+            
+            // Update the node data in Drawflow
+            const nodeData = editor.getNodeFromId(nodeId);
+            if (nodeData) {
+                nodeData.width = width;
+                nodeData.height = height;
+                
+                // Update the node in the editor
+                editor.updateNodeDataFromId(nodeId, nodeData);
+            }
+        }
+    });
+
+    resizeObserver.observe(nodeElement);
+
+    // Add mouse event listeners to detect resize start/end
+    nodeElement.addEventListener('mousedown', (e: MouseEvent) => {
+        // Check if the mouse is near the resize handle (bottom-right corner)
+        const rect = nodeElement.getBoundingClientRect();
+        const mouseX = e.clientX;
+        const mouseY = e.clientY;
+        
+        // If mouse is within 20px of bottom-right corner, it's likely a resize
+        if (mouseX > rect.right - 20 && mouseY > rect.bottom - 20) {
+            isResizing = true;
+            // Temporarily disable editor dragging
+            if (editor && editor.editor_mode === 'edit') {
+                editor.editor_mode = 'fixed';
+                // Store original mode to restore later
+                (nodeElement as any).originalMode = 'edit';
+            }
+        }
+    });
+
+    nodeElement.addEventListener('mouseup', () => {
+        if (isResizing) {
+            // Small delay to ensure resize is complete
+            setTimeout(() => {
+                isResizing = false;
+                // Restore original editor mode
+                if (editor && (nodeElement as any).originalMode) {
+                    editor.editor_mode = (nodeElement as any).originalMode;
+                    (nodeElement as any).originalMode = null;
+                }
+            }, 100);
+        }
+    });
+
+    // Also listen for resize events on the window to catch resize end
+    const handleResizeEnd = () => {
+        if (isResizing) {
+            isResizing = false;
+        }
+    };
+
+    window.addEventListener('mouseup', handleResizeEnd);
+    window.addEventListener('blur', handleResizeEnd);
+
+    // Store the observer and cleanup function for cleanup if needed
+    (nodeElement as any).resizeObserver = resizeObserver;
+    (nodeElement as any).resizeCleanup = () => {
+        window.removeEventListener('mouseup', handleResizeEnd);
+        window.removeEventListener('blur', handleResizeEnd);
+    };
+}
+
+// Import data from JSON file
+function importDataFromFile(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    
+    if (!file) {
+        return;
+    }
+    
+    // Check file type
+    if (!file.name.toLowerCase().endsWith('.json')) {
+        alert('Please select a valid JSON file.');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = (e: ProgressEvent<FileReader>) => {
+        try {
+            const content = e.target?.result as string;
+            const data = JSON.parse(content);
+            
+            // Validate the data structure
+            if (!data || typeof data !== 'object') {
+                throw new Error('Invalid JSON structure');
+            }
+            
+            // Check if it's a Drawflow export
+            if (!data.drawflow) {
+                throw new Error('This doesn\'t appear to be a valid Drawflow export file');
+            }
+            
+            // Clear current canvas
+            editor.clearModuleSelected();
+            
+            // Import the data
+            editor.import(data);
+            
+            // Reset the file input
+            input.value = '';
+            
+        } catch (error) {
+            console.error('Import error:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+            alert(`Import failed: ${errorMessage}`);
+            
+            // Reset the file input
+            input.value = '';
+        }
+    };
+    
+    reader.onerror = () => {
+        alert('Error reading the file');
+        // Reset the file input
+        input.value = '';
+    };
+    
+    reader.readAsText(file);
+}
+
+// Download export as JSON file
+function downloadExport(): void {
+    try {
+        // Get the current Drawflow data
+        const data = editor.export();
+        
+        // Create a filename with timestamp
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        const filename = `drawflow-export-${timestamp}.json`;
+        
+        // Convert data to JSON string with pretty formatting
+        const jsonString = JSON.stringify(data, null, 2);
+        
+        // Create a blob with the JSON data
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        
+        // Create a temporary URL for the blob
+        const url = URL.createObjectURL(blob);
+        
+        // Create a temporary anchor element for download
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        link.style.display = 'none';
+        
+        // Add to DOM, click, and remove
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Clean up the URL object
+        URL.revokeObjectURL(url);
+        
+    } catch (error) {
+        console.error('Export error:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        alert(`Export failed: ${errorMessage}`);
+    }
+}
+
 // Export functions to global scope for HTML compatibility
 (window as any).showpopup = showpopup;
 (window as any).closemodal = closemodal;
@@ -435,3 +739,5 @@ function changeMode(option: 'lock' | 'unlock'): void {
 (window as any).allowDrop = allowDrop;
 (window as any).positionMobile = positionMobile;
 (window as any).addNodeToDrawFlow = addNodeToDrawFlow;
+(window as any).importDataFromFile = importDataFromFile;
+(window as any).downloadExport = downloadExport;
