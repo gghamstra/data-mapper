@@ -363,22 +363,29 @@ function addNodeToDrawFlow(name: string, pos_x: number, pos_y: number): void {
               <div class="title-box"><i class="fas fa-plug"></i> API Endpoint</div>
               <div class="box" style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
                 <p style="margin: 0; font-weight: bold;">Endpoint Configuration</p>
-                <input type="text" df-url placeholder="API URL" value="https://api.example.com" style="width: 100%;">
                 <select df-method style="width: 100%;">
-                  <option value="GET">GET</option>
-                  <option value="POST">POST</option>
-                  <option value="PUT">PUT</option>
-                  <option value="DELETE">DELETE</option>
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="PUT">PUT</option>
+                <option value="DELETE">DELETE</option>
                 </select>
-                <p style="margin: 0; font-weight: bold;">Authentication</p>
-                <input type="text" df-auth placeholder="Bearer token or API key" style="width: 100%;">
+                <input type="text" df-url placeholder="API URL" value="https://api.example.com" style="width: 100%;">
+                <p style="margin: 0; font-weight: bold;">Schema</p>
+                <textarea df-schema placeholder="JSON Schema or OpenAPI schema reference" style="width: 100%; height: 60px; resize: vertical;">{
+  "type": "object",
+  "properties": {
+    "id": {"type": "string"},
+    "name": {"type": "string"}
+  }
+}</textarea>
               </div>
             </div>
             `;
             editor.addNode('endpoint', 1, 1, pos_x, pos_y, 'endpoint', { 
                 "url": 'https://api.example.com', 
                 "method": 'GET', 
-                "auth": '' 
+                "auth": '',
+                "schema": '{"type": "object", "properties": {"id": {"type": "string"}, "name": {"type": "string"}}}'
             }, endpoint);
             break;
             
@@ -446,7 +453,6 @@ function addNodeToDrawFlow(name: string, pos_x: number, pos_y: number): void {
             <div style="width: 100%; height: 100%; display: flex; flex-direction: column;">
               <div class="title-box"><i class="fas fa-exchange-alt"></i> Data Mapping</div>
               <div class="box" style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
-                <p style="margin: 0; font-weight: bold;">Mapping Configuration</p>
                 
                 <p style="margin: 0; font-weight: bold;">Mapping Rules</p>
                 <textarea df-mapping-rules placeholder="Mapping Rules (JSONPath expressions)" style="width: 100%; height: 40px; resize: vertical;">$.id -> $.userId
@@ -689,6 +695,183 @@ function importDataFromFile(event: Event): void {
     reader.readAsText(file);
 }
 
+// Import OpenAPI YAML file and create endpoint nodes
+function importOpenAPIFile(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    
+    if (!file) {
+        return;
+    }
+    
+    // Check file type
+    if (!file.name.toLowerCase().match(/\.(yaml|yml)$/)) {
+        alert('Please select a valid YAML file (.yaml or .yml).');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = (e: ProgressEvent<FileReader>) => {
+        try {
+            const content = e.target?.result as string;
+            
+            // Parse YAML content
+            const openApiSpec = (window as any).jsyaml.load(content);
+            
+            // Validate OpenAPI structure
+            if (!openApiSpec || !openApiSpec.openapi && !openApiSpec.swagger) {
+                throw new Error('This doesn\'t appear to be a valid OpenAPI specification');
+            }
+            
+            // Extract endpoints and create nodes
+            const endpoints = extractEndpointsFromOpenAPI(openApiSpec);
+            
+            if (endpoints.length === 0) {
+                alert('No endpoints found in the OpenAPI specification');
+                return;
+            }
+            
+            // Create endpoint nodes
+            createEndpointNodesFromOpenAPI(endpoints);
+            
+            // Reset the file input
+            input.value = '';
+            
+        } catch (error) {
+            console.error('OpenAPI import error:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+            alert(`OpenAPI import failed: ${errorMessage}`);
+            
+            // Reset the file input
+            input.value = '';
+        }
+    };
+    
+    reader.onerror = () => {
+        alert('Error reading the OpenAPI file');
+        // Reset the file input
+        input.value = '';
+    };
+    
+    reader.readAsText(file);
+}
+
+// Extract endpoints from OpenAPI specification
+function extractEndpointsFromOpenAPI(spec: any): Array<{
+    path: string;
+    method: string;
+    operationId?: string;
+    summary?: string;
+    description?: string;
+    tags?: string[];
+}> {
+    const endpoints: Array<{
+        path: string;
+        method: string;
+        operationId?: string;
+        summary?: string;
+        description?: string;
+        tags?: string[];
+    }> = [];
+    
+    const paths = spec.paths || {};
+    
+    for (const [path, pathItem] of Object.entries(paths)) {
+        const pathObj = pathItem as any;
+        
+        // Common HTTP methods
+        const methods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
+        
+        for (const method of methods) {
+            if (pathObj[method]) {
+                const operation = pathObj[method];
+                endpoints.push({
+                    path: path,
+                    method: method.toUpperCase(),
+                    operationId: operation.operationId,
+                    summary: operation.summary,
+                    description: operation.description,
+                    tags: operation.tags
+                });
+            }
+        }
+    }
+    
+    return endpoints;
+}
+
+// Create endpoint nodes from OpenAPI endpoints
+function createEndpointNodesFromOpenAPI(endpoints: Array<{
+    path: string;
+    method: string;
+    operationId?: string;
+    summary?: string;
+    description?: string;
+    tags?: string[];
+}>): void {
+    const baseX = 100;
+    const baseY = 100;
+    const spacingX = 300;
+    const spacingY = 200;
+    const nodesPerRow = 3;
+    
+    endpoints.forEach((endpoint, index) => {
+        const row = Math.floor(index / nodesPerRow);
+        const col = index % nodesPerRow;
+        
+        const x = baseX + (col * spacingX);
+        const y = baseY + (row * spacingY);
+        
+        // Create endpoint node HTML
+        const endpointHtml = `
+        <div style="width: 100%; height: 100%; display: flex; flex-direction: column;">
+          <div class="title-box"><i class="fas fa-plug"></i> ${endpoint.method} ${endpoint.path}</div>
+          <div class="box" style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
+            <p style="margin: 0; font-weight: bold;">API Endpoint</p>
+            <select df-method style="width: 100%;">
+            <option value="GET" ${endpoint.method === 'GET' ? 'selected' : ''}>GET</option>
+            <option value="POST" ${endpoint.method === 'POST' ? 'selected' : ''}>POST</option>
+            <option value="PUT" ${endpoint.method === 'PUT' ? 'selected' : ''}>PUT</option>
+            <option value="DELETE" ${endpoint.method === 'DELETE' ? 'selected' : ''}>DELETE</option>
+            <option value="PATCH" ${endpoint.method === 'PATCH' ? 'selected' : ''}>PATCH</option>
+            </select>
+            <input type="text" df-url placeholder="API URL" value="${endpoint.path}" style="width: 100%;">
+            <p style="margin: 0; font-weight: bold;">Description</p>
+            <textarea df-description placeholder="Endpoint description" style="width: 100%; height: 40px; resize: vertical;">${endpoint.summary || endpoint.description || ''}</textarea>
+            <p style="margin: 0; font-weight: bold;">Schema</p>
+            <textarea df-schema placeholder="JSON Schema or OpenAPI schema reference" style="width: 100%; height: 60px; resize: vertical;">{
+  "type": "object",
+  "properties": {
+    "id": {"type": "string"},
+    "name": {"type": "string"}
+  }
+}</textarea>
+          </div>
+        </div>
+        `;
+        
+        // Add the node to the editor
+        editor.addNode(
+            `endpoint-${index}`,
+            1,
+            1,
+            x,
+            y,
+            'endpoint',
+            {
+                url: endpoint.path,
+                method: endpoint.method,
+                auth: '',
+                description: endpoint.summary || endpoint.description || '',
+                schema: '{"type": "object", "properties": {"id": {"type": "string"}, "name": {"type": "string"}}}'
+            },
+            endpointHtml
+        );
+    });
+    
+    alert(`Successfully imported ${endpoints.length} endpoints from OpenAPI specification`);
+}
+
 // Download export as JSON file
 function downloadExport(): void {
     try {
@@ -741,3 +924,4 @@ function downloadExport(): void {
 (window as any).addNodeToDrawFlow = addNodeToDrawFlow;
 (window as any).importDataFromFile = importDataFromFile;
 (window as any).downloadExport = downloadExport;
+(window as any).importOpenAPIFile = importOpenAPIFile;

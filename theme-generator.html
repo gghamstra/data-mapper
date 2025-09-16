@@ -10,6 +10,7 @@
 <body>
   <script src="https://cdn.jsdelivr.net/gh/jerosoler/Drawflow/dist/drawflow.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.0/js/all.min.js" integrity="sha256-KzZiKy0DWYsnwMF+X1DvQngQ2/FxF7MF3Ff72XcpuPs=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jerosoler/Drawflow@0.0.48/dist/drawflow.min.css">
   <link rel="stylesheet" type="text/css" href="beautiful.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.0/css/all.min.css" integrity="sha256-h20CPZ0QyXlBuAw7A+KluUYx/3pK+c7lYEpqLTlxjYQ=" crossorigin="anonymous" />
@@ -88,6 +89,8 @@
         <div class="btn-clear" onclick="editor.clearModuleSelected()">Clear</div>
         <div class="btn-import" onclick="document.getElementById('import-file-input').click()">Import</div>
         <input type="file" id="import-file-input" accept=".json" style="display: none;" onchange="importDataFromFile(event)">
+        <div class="btn-openapi" onclick="document.getElementById('openapi-file-input').click()">OpenAPI</div>
+        <input type="file" id="openapi-file-input" accept=".yaml,.yml" style="display: none;" onchange="importOpenAPIFile(event)">
         <div class="btn-lock">
           <i id="lock" class="fas fa-lock" onclick="editor.editor_mode='fixed'; changeMode('lock');"></i>
           <i id="unlock" class="fas fa-lock-open" onclick="editor.editor_mode='edit'; changeMode('unlock');" style="display:none;"></i>
